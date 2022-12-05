@@ -15,9 +15,9 @@ conn <- dbConnect(
   RPostgres::Postgres(),
   dbname = "SerProfesDB",
   host = "localhost",
-  port = 6432,
+  port = 5432,
   user = "postgres",
-  password = "Zy68vq4ReshgCPUgdD"
+  password = "TestP@ass"
 )
 
 ui <- fillPage(

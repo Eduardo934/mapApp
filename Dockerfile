@@ -1,27 +1,43 @@
-FROM rhub/r-minimal:4.2.2
+FROM rocker/r-base
+# system libraries of general use
+RUN apt-get update && apt-get install -y \
+    sudo \
+    pandoc \
+    pandoc-citeproc \
+    libcurl4-gnutls-dev \
+    libcairo2-dev \
+    libxt-dev \
+    libssl-dev \
+    libssh2-1-dev 
 
-RUN apk update
-RUN apk add --no-cache --update-cache \
-    --repository http://nl.alpinelinux.org/alpine/v3.11/main \
-    autoconf=2.69-r2 \
-    automake=1.16.1-r0 \
-    bash tzdata
-RUN echo "America/Edmonton" > /etc/timezone
+# system library dependency for the euler app
+RUN apt-get update && apt-get install -y \
+    libmpfr-dev
 
-RUN installr -d \
-    -t "R-dev file linux-headers libxml2-dev gnutls-dev openssl-dev libx11-dev cairo-dev libxt-dev" \
-    -a "libxml2 cairo libx11 font-xfree86-type1" \
-    sf DBI dplyr leaflet leaflet.extras shiny mapview RPostgres
+# Dependencies for the spatial packages
+RUN sudo apt install -y libudunits2-dev libgdal-dev libgeos-dev libproj-dev libfontconfig1-dev
 
-RUN rm -rf /var/cache/apk/*
+RUN sudo apt install -y r-base 
 
-RUN addgroup --system app && adduser --system --ingroup app app
+
+# basic shiny functionality
+#RUN sudo R -e "install.packages(c('shiny', 'sf', 'mapview', 'leaflet', 'leaflet.extras', 'dplyr', 'RPostgreSQL', 'RPostgres', 'DBI') , repos='https://cloud.r-project.org/')""
+
+RUN R -e "install.packages('sf', repos='https://cloud.r-project.org/')"
+RUN R -e "install.packages('DBI', repos='https://cloud.r-project.org/')"
+RUN R -e "install.packages('dplyr', repos='https://cloud.r-project.org/')"
+RUN R -e "install.packages('leaflet', repos='https://cloud.r-project.org/')"
+RUN R -e "install.packages('leaflet.extras', repos='https://cloud.r-project.org/')"
+RUN R -e "install.packages('shiny',repos='https://cloud.r-project.org/')"
+RUN R -e "install.packages('mapview', repos='https://cloud.r-project.org/')"
+RUN R -e "install.packages('RPostgreSQL', repos='https://cloud.r-project.org/')"
+RUN R -e "install.packages('RPostgres', repos='https://cloud.r-project.org/')"
+
+
+# copy the app to the image
 RUN mkdir /root/euler
 COPY . /root/euler
 
-RUN chown app:app -R /home/app
-USER app
-
 EXPOSE 3838
 
-CMD ["R", "-e", "options(tz='America/Edmonton');shiny::runApp('/home/app', port = 3838, host = '0.0.0.0')"]
+CMD ["R", "-e", "shiny::runApp('/root/euler')"]
