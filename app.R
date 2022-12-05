@@ -7,17 +7,17 @@ library(leaflet)
 library(leaflet.extras)
 library(dplyr)
 
-library(RPostgreSQL)
+#library(RPostgreSQL)
 library(RPostgres)
 library(DBI)
 
 conn <- dbConnect(
   RPostgres::Postgres(),
-  dbname = "QgisTest",
+  dbname = "SerProfesDB",
   host = "localhost",
-  port = 5432,
+  port = 6432,
   user = "postgres",
-  password = "postgres"
+  password = "Zy68vq4ReshgCPUgdD"
 )
 
 ui <- fillPage(
