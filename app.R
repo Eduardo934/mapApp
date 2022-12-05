@@ -7,7 +7,7 @@ library(leaflet)
 library(leaflet.extras)
 library(dplyr)
 
-library(RPostgreSQL)
+#library(RPostgreSQL)
 library(RPostgres)
 library(DBI)
 
