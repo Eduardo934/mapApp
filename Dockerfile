@@ -35,9 +35,9 @@ RUN R -e "install.packages('RPostgres', repos='https://cloud.r-project.org/')"
 
 
 # copy the app to the image
-RUN mkdir /root/euler
-COPY . /root/euler
+RUN mkdir /root/mapp_app
+COPY . /root/mapp_app
 
 EXPOSE 3838
 
-CMD ["R", "-e", "shiny::runApp('/root/euler')"]
+CMD ["R", "-e", "shiny::runApp('/root/mapp_app', port = 3838)"]
