@@ -13,11 +13,11 @@ library(DBI)
 
 conn <- dbConnect(
   RPostgres::Postgres(),
-  dbname = "SerProfesDB",
+  dbname = "QgisTest",
   host = "localhost",
   port = 5432,
   user = "postgres",
-  password = "TestP@ass"
+  password = "postgres"
 )
 
 ui <- fillPage(
