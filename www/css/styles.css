@@ -1,0 +1,53 @@
+a.leaflet-draw-edit-edit {
+ display: none;
+}
+
+a.leaflet-draw-edit-remove{
+  display: inline;
+  visibility: hidden;
+}
+
+a.leaflet-draw-draw-circlemarker {
+ display: none;
+}
+
+a.leaflet-draw-draw-marker{
+  display: none;
+}
+
+a.leaflet-draw-draw-circle{
+  display: none;
+}
+
+a.leaflet-draw-draw-rectangle{
+  display: none;
+}
+
+a.leaflet-draw-draw-polygon{
+  display: none;
+}
+
+a.leaflet-draw-draw-polyline{
+  display: none;
+}
+
+button.easy-button-button{
+  display: none;
+}
+
+.fixedPanel{
+  position:fixed; 
+  top:50px; 
+  left:50px;
+  background-color: white;
+  border-radius: 25px;
+  padding:20px;
+  max-width: 250px;
+}
+
+.panel-inputs-newFeature{
+  margin: 10px;
+  padding: 30px;
+  max-height: 400px;
+  overflow-y: scroll;
+}
