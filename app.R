@@ -16,11 +16,11 @@ library(DBI)
 
 conn <- dbConnect(
   RPostgres::Postgres(),
-  dbname = "SerProfesDB",
-  host = "82.223.217.238",
-  port = 5432,
-  user = "postgres",
-  password = "secretPass123."
+  dbname = Sys.getenv("DB_DBNAME"),
+  host = Sys.getenv("DB_HOST"),
+  port = Sys.getenv("DB_PORT"),
+  user = Sys.getenv("DB_USER"),
+  password = Sys.getenv("DB_PASSWORD")
 )
 
 getColorsMap <- function(x){
@@ -38,8 +38,6 @@ getDashLineMap <- function(x){
 getOpacityFeatureMap <- function(x){
   lapply(x, function(i) unlist(strsplit(i, ";"))[4]) %>%unlist()
 }
-
-tempUsers <- data.frame(user_id=c("452345","63465","4363456","434655"), editAcces=c(TRUE, TRUE, FALSE, FALSE))
 
 
 ui <- fillPage(
@@ -95,8 +93,8 @@ server <- function(input, output, session) {
     bienes_revertibles <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM bienes_revertibles_qgis") %>%
       st_transform(4326)
     
-   
-    if(parseQueryString(session$clientData$url_search)[["id"]]== "3758"){
+    print(reactiveData$rol)
+    if(reactiveData$rol == "SUPER ADMIN" | reactiveData$rol == "SECRETARIO"){
       mapa<-leaflet() %>% 
         addPolygons(data = parcelas_rusticas , color=getColorsMap(parcelas_rusticas$style), group = "parcelas_rusticas", fill=TRUE,
                     popup = popupTable(parcelas_rusticas[,2:3] %>% st_drop_geometry() %>% mutate(edit = rep(
@@ -333,7 +331,7 @@ server <- function(input, output, session) {
   newFeature <- reactiveValues()
   observeEvent(input$mapa_draw_new_feature,{
     req(length(parseQueryString(session$clientData$url_search)) != 0)
-    req(parseQueryString(session$clientData$url_search)[["id"]]== "3758")
+    req(reactiveData$rol == "SUPER ADMIN" | reactiveData$rol == "SECRETARIO")
     updatedLayer <- input$editingLayer
     
     if(editedFeature$updatedLayer == "inmuebles_rusticos_qgis" | editedFeature$updatedLayer == "vias_publicas_rusticas_qgis" |
@@ -424,7 +422,7 @@ server <- function(input, output, session) {
   
   observeEvent(input$addNewFeature,{
     req(length(parseQueryString(session$clientData$url_search)) != 0)
-    req(parseQueryString(session$clientData$url_search)[["id"]]== "3758")
+    req(reactiveData$rol == "SUPER ADMIN" | reactiveData$rol == "SECRETARIO")
     formDataList <- lapply(2:ncol(newFeature$attributes), function(i) input[[paste0('id_', colnames(newFeature$attributes)[i])]])
     
     formDataVector <- c()
@@ -462,7 +460,7 @@ server <- function(input, output, session) {
   
   observeEvent(input$remove_feature,{
     req(length(parseQueryString(session$clientData$url_search)) != 0)
-    req(parseQueryString(session$clientData$url_search)[["id"]]== "3758")
+    req(reactiveData$rol == "SUPER ADMIN" | reactiveData$rol == "SECRETARIO")
     req(editedFeature$featureId)
     
     removedFeature <- editedFeature$featureId
@@ -576,7 +574,7 @@ server <- function(input, output, session) {
   
   observeEvent(input$update_feature,{
     req(length(parseQueryString(session$clientData$url_search)) != 0)
-    req(parseQueryString(session$clientData$url_search)[["id"]]== "3758")
+    req(reactiveData$rol == "SUPER ADMIN" | reactiveData$rol == "SECRETARIO")
     
     editedFeature <- input$mapa_shape_click[["id"]]
     updatedLayer <- paste0(input$mapa_shape_click[["group"]],"_qgis")
@@ -633,7 +631,7 @@ server <- function(input, output, session) {
   
   observeEvent(input$mapa_draw_edited_features,{
     req(length(parseQueryString(session$clientData$url_search)) != 0)
-    req(parseQueryString(session$clientData$url_search)[["id"]]== "3758")
+    req(reactiveData$rol == "SUPER ADMIN" | reactiveData$rol == "SECRETARIO")
     req(input$mapa_draw_edited_features)
     
     editedFeature <- input$mapa_shape_click[["id"]]
@@ -697,6 +695,12 @@ server <- function(input, output, session) {
     query <- parseQueryString(session$clientData$url_search)
     print(query)
     
+    req(parseQueryString(session$clientData$url_search)[["id"]])
+    
+    rol <- dbGetQuery(conn, paste0("SELECT r.id_rol , r.nombre  FROM usuarios u INNER JOIN roles r  ON r.id_rol  = u.id_rol WHERE u.id_usuario = ", parseQueryString(session$clientData$url_search)[["id"]]))
+    if(length(reactiveData$rol <- rol$nombre) != 0){
+      reactiveData$rol <- rol$nombre
+    }
   })
   
   # observe({
