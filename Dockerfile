@@ -28,8 +28,11 @@ RUN R -e "install.packages('DBI', repos='https://cloud.r-project.org/')"
 RUN R -e "install.packages('dplyr', repos='https://cloud.r-project.org/')"
 RUN R -e "install.packages('leaflet', repos='https://cloud.r-project.org/')"
 RUN R -e "install.packages('leaflet.extras', repos='https://cloud.r-project.org/')"
+RUN R -e "install.packages('leafpop', repos='https://cloud.r-project.org/')"
 RUN R -e "install.packages('shiny',repos='https://cloud.r-project.org/')"
+RUN R -e "install.packages('shinyjs',repos='https://cloud.r-project.org/')"
 RUN R -e "install.packages('mapview', repos='https://cloud.r-project.org/')"
+RUN R -e "install.packages('lubridate', repos='https://cloud.r-project.org/')"
 RUN R -e "install.packages('RPostgreSQL', repos='https://cloud.r-project.org/')"
 RUN R -e "install.packages('RPostgres', repos='https://cloud.r-project.org/')"
 
@@ -40,4 +43,4 @@ COPY . /root/mapp_app
 
 EXPOSE 3838
 
-CMD ["R", "-e", "shiny::runApp('/root/mapp_app', port = 3838)"]
+CMD ["R", "-e", "shiny::runApp('/root/mapp_app', port = 5432)"]
