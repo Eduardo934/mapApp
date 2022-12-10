@@ -16,11 +16,11 @@ library(DBI)
 
 conn <- dbConnect(
   RPostgres::Postgres(),
-  dbname = "postgis_33_sample",
-  host = "localhost",
+  dbname = "SerProfesDB",
+  host = "82.223.217.238",
   port = 5432,
   user = "postgres",
-  password = "postgres"
+  password = "secretPass123."
 )
 
 getColorsMap <- function(x){
@@ -39,12 +39,15 @@ getOpacityFeatureMap <- function(x){
   lapply(x, function(i) unlist(strsplit(i, ";"))[4]) %>%unlist()
 }
 
+tempUsers <- data.frame(user_id=c("452345","63465","4363456","434655"), editAcces=c(TRUE, TRUE, FALSE, FALSE))
+
+
 ui <- fillPage(
   includeCSS("www/css/styles.css"),
   useShinyjs(),
   div(leafletOutput("mapa",  width = "100%", height = "100%"), style="width:100%; height:100%"),
-  div(fluidRow(column(12, selectInput("editingLayer",label = "Agregar elemento a la capa:", choices = c("inmuebles_urbanos", "inmuebles_rusticos", "vias_publicas_urbanas", "vias_publicas_rusticas",
-                                                                         "bienes_revertibles", "patrimonio_suelo")))), 
+  div(fluidRow(column(12, selectInput("editingLayer",label = "Agregar elemento a la capa:", choices = c("inmuebles_urbanos_qgis", "inmuebles_rusticos_qgis", "vias_publicas_urbanas_qgis", "vias_publicas_rusticas_qgis",
+                                                                                                        "bienes_revertibles_qgis", "patrimonio_suelo_qgis")))), 
       class="fixedPanel")
   
 )
@@ -55,87 +58,89 @@ server <- function(input, output, session) {
   reactiveData <- reactiveValues()
   
   ## Non editable layers
-  parcelas_rusticas <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM parcelas_rusticas") %>%
+  parcelas_rusticas <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM parcelas_rusticas_qgis") %>%
     st_transform(4326)
-  construcciones_urbanas <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM construcciones_urbanas") %>%
+  construcciones_urbanas <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM construcciones_urbanas_qgis") %>%
     st_transform
-  parcelas_urbanas <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM parcelas_urbanas") %>%
+  parcelas_urbanas <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM parcelas_urbanas_qgis") %>%
     st_transform(4326)
-  limite_urbana <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM limite_urbana") %>%
+  limite_urbana <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM limite_urbana_qgis") %>%
     st_transform(4326)
-  limite_rustica <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM limite_rustica") %>%
+  limite_rustica <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM limite_rustica_qgis") %>%
     st_transform(4326)
-  carreteras <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM carreteras") %>%
+  carreteras <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM carreteras_qgis") %>%
     st_transform(4326)
-  ferrocarril <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM ferrocarril") %>%
+  ferrocarril <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM ferrocarril_qgis") %>%
     st_transform(4326)
-  hidrografia <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM hidrografia") %>%
+  hidrografia <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM hidrografia_qgis") %>%
     st_transform(4326)
-  vias_pecuarias <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM vias_pecuarias") %>%
+  vias_pecuarias <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM vias_pecuarias_qgis") %>%
     st_transform(4326)
   
 
   output$mapa <- renderLeaflet({
-    
-    
+    req(length(parseQueryString(session$clientData$url_search)) != 0)
+  
     #Editable layers
-    inmuebles_urbanos <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM inmuebles_urbanos") %>%
+    inmuebles_urbanos <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM inmuebles_urbanos_qgis") %>%
       st_transform(4326)
-    inmuebles_rusticos <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM inmuebles_rusticos") %>%
+    inmuebles_rusticos <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM inmuebles_rusticos_qgis") %>%
       st_transform(4326)
-    vias_publicas_rusticas <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM vias_publicas_rusticas") %>%
+    vias_publicas_rusticas <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM vias_publicas_rusticas_qgis") %>%
       st_transform(4326)
-    vias_publicas_urbanas <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM vias_publicas_urbanas") %>%
+    vias_publicas_urbanas <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM vias_publicas_urbanas_qgis") %>%
       st_transform(4326)
-    patrimonio_suelo <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM patrimonio_suelo") %>%
+    patrimonio_suelo <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM patrimonio_suelo_qgis") %>%
       st_transform(4326)
-    bienes_revertibles <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM bienes_revertibles") %>%
+    bienes_revertibles <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = "SELECT * FROM bienes_revertibles_qgis") %>%
       st_transform(4326)
     
-    mapa<-leaflet() %>% 
-      addPolygons(data = parcelas_rusticas , color=getColorsMap(parcelas_rusticas$style), group = "parcelas_rusticas", fill=TRUE,
-                  popup = popupTable(parcelas_rusticas[,2:3] %>% st_drop_geometry() %>% mutate(edit = rep(
-                    "<div> 
+   
+    if(parseQueryString(session$clientData$url_search)[["id"]]== "3758"){
+      mapa<-leaflet() %>% 
+        addPolygons(data = parcelas_rusticas , color=getColorsMap(parcelas_rusticas$style), group = "parcelas_rusticas", fill=TRUE,
+                    popup = popupTable(parcelas_rusticas[,2:3] %>% st_drop_geometry() %>% mutate(edit = rep(
+                      "<div> 
                                                                             <button onclick='Shiny.onInputChange(\"remove_feature\",  Math.random())' id='removeFeature' type='button' class='btn btn-default action-button'>Remove</button>
                                                                           <button onclick='Shiny.onInputChange(\"update_feature\",  Math.random())' id='updateFeature' type='button' class='btn btn-default action-button'>Update</button>
                                                                           </div>", nrow(parcelas_rusticas)
-                  ))
-                  ), layerId = parcelas_rusticas$parcela_id) %>%
-      addPolygons(
-        data = construcciones_urbanas , color=getColorsMap(construcciones_urbanas$style), group = "construcciones_urbanas", fill=TRUE,
-        popup = popupTable(construcciones_urbanas[,2:3] %>% st_drop_geometry() %>% mutate(edit = rep(
-          "<div> 
+                    ))
+                    ), layerId = parcelas_rusticas$parcela_id) %>%
+        addPolygons(
+          data = construcciones_urbanas , color=getColorsMap(construcciones_urbanas$style), group = "construcciones_urbanas", fill=TRUE,
+          popup = popupTable(construcciones_urbanas[,2:3] %>% st_drop_geometry() %>% mutate(edit = rep(
+            "<div> 
                                                                             <button onclick='Shiny.onInputChange(\"remove_feature\",  Math.random())' id='removeFeature' type='button' class='btn btn-default action-button'>Remove</button>
                                                                           <button onclick='Shiny.onInputChange(\"update_feature\",  Math.random())' id='updateFeature' type='button' class='btn btn-default action-button'>Update</button>
                                                                           </div>", nrow(construcciones_urbanas)
-        ))
-        ), layerId = construcciones_urbanas$construccion_id )%>%
-      addPolygons(
-        data = parcelas_urbanas , color="gray", group = "parcelas_urbanas", fill=TRUE, fillColor = "gray",
-        popup = paste(
-          "via_id: ", parcelas_urbanas$parcela_id, "<br>",
-          "masa: ", parcelas_urbanas$DELEGACIO, "<br>",
-          "parcela: ", parcelas_urbanas$MUNICIPIO, "<br>",
-          "<button onclick='Shiny.onInputChange(\"remove_feature\",  Math.random())' id='removeFeature' type='button' class='btn btn-default action-button'>Remove</button>",
-          "<button onclick='Shiny.onInputChange(\"update_feature\",  Math.random())' id='updateFeature' type='button' class='btn btn-default action-button'>Update</button>"
-                      ), layerId = parcelas_urbanas$parcela_id ) %>%
-      addPolygons(
-        data = limite_urbana , color=getColorsMap(limite_urbana$style), group = "limite_urbana", fill=FALSE, dashArray ="20,20",
-        layerId = limite_urbana$limite_id ) %>%
-      addPolygons(
-        data = limite_rustica , color=getColorsMap(limite_rustica$style), group = "limite_rustica", fill=FALSE, dashArray ="20,20",
-        layerId = limite_rustica$limite_id ) %>%
-      # addPolygons(
-      #   data = hidrografia , color="blue", group = "hidrografia",
-      #   popup = paste(
-      #     "via_id: ", hidrografia$cuerpo_id, "<br>",
-      #     "masa: ", hidrografia$id_red, "<br>",
-      #     "parcela: ", hidrografia$id_tramo, "<br>",
-      #     "<button onclick='Shiny.onInputChange(\"remove_feature\",  Math.random())' id='removeFeature' type='button' class='btn btn-default action-button'>Remove</button>",
-      #     "<button onclick='Shiny.onInputChange(\"update_feature\",  Math.random())' id='updateFeature' type='button' class='btn btn-default action-button'>Update</button>"
-      #   ), layerId = hidrografia$cuerpo_id ) %>%
-      # addPolygons(
-      #   data = carreteras , color="red", group = "carreteras",
+          ))
+          ), layerId = construcciones_urbanas$construccion_id )%>%
+        addPolygons(
+          data = parcelas_urbanas , color="gray", group = "parcelas_urbanas", fill=TRUE, fillColor = "gray",
+          popup = paste(
+            "via_id: ", parcelas_urbanas$parcela_id, "<br>",
+            "masa: ", parcelas_urbanas$DELEGACIO, "<br>",
+            "parcela: ", parcelas_urbanas$MUNICIPIO, "<br>",
+            "<button onclick='Shiny.onInputChange(\"remove_feature\",  Math.random())' id='removeFeature' type='button' class='btn btn-default action-button'>Remove</button>",
+            "<button onclick='Shiny.onInputChange(\"update_feature\",  Math.random())' id='updateFeature' type='button' class='btn btn-default action-button'>Update</button>"
+          ), layerId = parcelas_urbanas$parcela_id ) %>%
+        addPolygons(
+          data = limite_urbana , color=getColorsMap(limite_urbana$style), group = "limite_urbana", fill=FALSE, dashArray ="20,20",
+          layerId = limite_urbana$limite_id ) %>%
+        addPolygons(
+          data = limite_rustica , color=getColorsMap(limite_rustica$style), group = "limite_rustica", fill=FALSE, dashArray ="20,20",
+          layerId = limite_rustica$limite_id ) %>%
+        # addPolygons(
+        #   data = hidrografia , color="blue", group = "hidrografia",
+        #   popup = paste(
+        #     "via_id: ", hidrografia$cuerpo_id, "<br>",
+        #     "masa: ", hidrografia$id_red, "<br>",
+        #     "parcela: ", hidrografia$id_tramo, "<br>",
+        #     "<button onclick='Shiny.onInputChange(\"remove_feature\",  Math.random())' id='removeFeature' type='button' class='btn btn-default action-button'>Remove</button>",
+        #     "<button onclick='Shiny.onInputChange(\"update_feature\",  Math.random())' id='updateFeature' type='button' class='btn btn-default action-button'>Update</button>"
+        #   ), layerId = hidrografia$cuerpo_id ) %>%
+        # addPolygons(
+        #   data = carreteras , color="red", group = "carreteras",
       #   popup = paste(
       #     "via_id: ", carreteras$carretera_id, "<br>",
       #     "masa: ", carreteras$id_vial, "<br>",
@@ -152,85 +157,164 @@ server <- function(input, output, session) {
                                                                           </div>", nrow(vias_pecuarias)
         ))
         ), layerId = vias_pecuarias$via_id ) %>%
-    
-      addPolygons(data = inmuebles_urbanos , color=getColorsMap(inmuebles_urbanos$style), group = "inmuebles_urbanos", fill=TRUE, fillColor = getColorsMap(inmuebles_urbanos$style), opacity = 0.4,
-                  popup = popupTable(inmuebles_urbanos[,2:3] %>% st_drop_geometry() %>% mutate(edit = rep(
-                    "<div> 
+        
+        addPolygons(data = inmuebles_urbanos , color=getColorsMap(inmuebles_urbanos$style), group = "inmuebles_urbanos", fill=TRUE, fillColor = getColorsMap(inmuebles_urbanos$style), opacity = 0.4,
+                    popup = popupTable(inmuebles_urbanos[,2:3] %>% st_drop_geometry() %>% mutate(edit = rep(
+                      "<div> 
                                                                             <button onclick='Shiny.onInputChange(\"remove_feature\",  Math.random())' id='removeFeature' type='button' class='btn btn-default action-button'>Remove</button>
                                                                           <button onclick='Shiny.onInputChange(\"update_feature\",  Math.random())' id='updateFeature' type='button' class='btn btn-default action-button'>Update</button>
                                                                           </div>", nrow(inmuebles_urbanos)
-                  ))
-                  ),
-                  layerId = inmuebles_urbanos$inmueble_id) %>%
-      addPolygons(data = inmuebles_rusticos , color=getColorsMap(inmuebles_rusticos$style), group = "inmuebles_rusticos", fill=TRUE, opacity = 0.4,
-                  popup = popupTable(inmuebles_rusticos[,2:3] %>% st_drop_geometry() %>% mutate(edit = rep(
-                    "<div> 
+                    ))
+                    ),
+                    layerId = inmuebles_urbanos$inmueble_id) %>%
+        addPolygons(data = inmuebles_rusticos , color=getColorsMap(inmuebles_rusticos$style), group = "inmuebles_rusticos", fill=TRUE, opacity = 0.4,
+                    popup = popupTable(inmuebles_rusticos[,2:3] %>% st_drop_geometry() %>% mutate(edit = rep(
+                      "<div> 
                                                                             <button onclick='Shiny.onInputChange(\"remove_feature\",  Math.random())' id='removeFeature' type='button' class='btn btn-default action-button'>Remove</button>
                                                                           <button onclick='Shiny.onInputChange(\"update_feature\",  Math.random())' id='updateFeature' type='button' class='btn btn-default action-button'>Update</button>
                                                                           </div>", nrow(inmuebles_rusticos)
-                  ))
-                  ),
-                  layerId = inmuebles_rusticos$inmueble_id)  %>%
-      addPolygons(data = vias_publicas_urbanas , color=getColorsMap(vias_publicas_urbanas$style), group = "vias_publicas_urbanas",
-                  popup = popupTable(vias_publicas_urbanas[,2:3] %>% st_drop_geometry() %>% mutate(edit = rep(
-                    "<div> 
+                    ))
+                    ),
+                    layerId = inmuebles_rusticos$inmueble_id)  %>%
+        addPolygons(data = vias_publicas_urbanas , color=getColorsMap(vias_publicas_urbanas$style), group = "vias_publicas_urbanas",
+                    popup = popupTable(vias_publicas_urbanas[,2:3] %>% st_drop_geometry() %>% mutate(edit = rep(
+                      "<div> 
                                                                             <button onclick='Shiny.onInputChange(\"remove_feature\",  Math.random())' id='removeFeature' type='button' class='btn btn-default action-button'>Remove</button>
                                                                           <button onclick='Shiny.onInputChange(\"update_feature\",  Math.random())' id='updateFeature' type='button' class='btn btn-default action-button'>Update</button>
                                                                           </div>", nrow(vias_publicas_urbanas)
-                  ))
-                  ),
-                  layerId = vias_publicas_urbanas$via_id) %>%
-      addPolygons(data = vias_publicas_rusticas , color=getColorsMap(vias_publicas_rusticas$style), group = "vias_publicas_rusticas", fillColor = getFillColorsMap(vias_publicas_rusticas$style),
-                  popup = popupTable(vias_publicas_rusticas[,2:3] %>% st_drop_geometry() %>% mutate(edit = rep(
-                    "<div> 
+                    ))
+                    ),
+                    layerId = vias_publicas_urbanas$via_id) %>%
+        addPolygons(data = vias_publicas_rusticas , color=getColorsMap(vias_publicas_rusticas$style), group = "vias_publicas_rusticas", fillColor = getFillColorsMap(vias_publicas_rusticas$style),
+                    popup = popupTable(vias_publicas_rusticas[,2:3] %>% st_drop_geometry() %>% mutate(edit = rep(
+                      "<div> 
                                                                             <button onclick='Shiny.onInputChange(\"remove_feature\",  Math.random())' id='removeFeature' type='button' class='btn btn-default action-button'>Remove</button>
                                                                           <button onclick='Shiny.onInputChange(\"update_feature\",  Math.random())' id='updateFeature' type='button' class='btn btn-default action-button'>Update</button>
                                                                           </div>", nrow(vias_publicas_rusticas)
-                  ))
-                  ), 
-                  layerId = vias_publicas_rusticas$via_id) %>%
-      addPolylines(data = bienes_revertibles , color=getColorsMap(bienes_revertibles$style), group = "bienes_revertibles", fillColor = getFillColorsMap(bienes_revertibles$style),
-                  popup = popupTable(bienes_revertibles[,1:3] %>% mutate(button = rep(
-                                                                          "<button onclick='Shiny.onInputChange(\"remove_feature\",  Math.random())' id='removeFeature' type='button' class='btn btn-default action-button'>Remove</button>
+                    ))
+                    ), 
+                    layerId = vias_publicas_rusticas$via_id) %>%
+        addPolylines(data = bienes_revertibles , color=getColorsMap(bienes_revertibles$style), group = "bienes_revertibles", fillColor = getFillColorsMap(bienes_revertibles$style),
+                     popup = popupTable(bienes_revertibles[,1:3] %>% mutate(button = rep(
+                       "<button onclick='Shiny.onInputChange(\"remove_feature\",  Math.random())' id='removeFeature' type='button' class='btn btn-default action-button'>Remove</button>
                                                                           <button onclick='Shiny.onInputChange(\"update_feature\",  Math.random())' id='updateFeature' type='button' class='btn btn-default action-button'>Update</button>"
-                                                                    ), nrow(bienes_revertibles))
-                                     ), 
-                  layerId = bienes_revertibles$bien_id) %>%
-      addPolygons(data = patrimonio_suelo , color=getColorsMap(patrimonio_suelo$style), group = "patrimonio_suelo", fill = TRUE,
-                  popup = popupTable(patrimonio_suelo[,2:3] %>% st_drop_geometry() %>% mutate(edit = rep(
-                    "<div> 
+                     ), nrow(bienes_revertibles))
+                     ), 
+                     layerId = bienes_revertibles$bien_id) %>%
+        addPolygons(data = patrimonio_suelo , color=getColorsMap(patrimonio_suelo$style), group = "patrimonio_suelo", fill = TRUE,
+                    popup = popupTable(patrimonio_suelo[,2:3] %>% st_drop_geometry() %>% mutate(edit = rep(
+                      "<div> 
                                                                             <button onclick='Shiny.onInputChange(\"remove_feature\",  Math.random())' id='removeFeature' type='button' class='btn btn-default action-button'>Remove</button>
                                                                           <button onclick='Shiny.onInputChange(\"update_feature\",  Math.random())' id='updateFeature' type='button' class='btn btn-default action-button'>Update</button>
                                                                           </div>", nrow(patrimonio_suelo)
-                  ))
-                  ), 
-                  layerId = patrimonio_suelo$patrimonio_id) %>%
-      addTiles( group = "OSM") %>%
-      addProviderTiles(providers$Esri.WorldImagery, group = "Esri.WorldImagery") %>%
-      addWMSTiles(
-        "http://ovc.catastro.meh.es/Cartografia/WMS/ServidorWMS.aspx",
-        layers = "catastro"
-      ) %>%
-      addWMSTiles(
-        "https://mapserver.eprinsa.es/cgi-bin/eiel",
-        layers = "EIEL"
-      ) %>%
-      addLayersControl(
-        baseGroups = c("Esri.WorldImagery", "OSM","catastro", "EIEL"),
-        overlayGroups = c(
-          "parcelas_rusticas", "contrucciones_urbanas", "parcelas_urbanas", "limite_urbana","limite_rustica", "hidrografia","carreteras",
-                          "vias_pecuarias", "ferrocarril",
-                          "inmuebles_urbanos", "inmuebles_rusticos", "vias_publicas_urbanas", "vias_publicas_rusticas",
-                          "bienes_revertibles", "patrimonio_suelo"),
-        options = layersControlOptions(collapsed = TRUE)
-      ) %>% 
-      addDrawToolbar(
-        targetGroup = "editing",
-        editOptions = editToolbarOptions(selectedPathOptions = selectedPathOptions()),
-        position="bottomleft") %>% 
-      addEasyButton(easyButton( position = "bottomleft",
-        icon="fa-backward", title="Refresh map", id = "refresh-map", 
-        onClick = JS("function(btn, map){Shiny.onInputChange('cancel_edit', Math.random());}")))
+                    ))
+                    ), 
+                    layerId = patrimonio_suelo$patrimonio_id) %>%
+        addTiles( group = "OSM") %>%
+        addProviderTiles(providers$Esri.WorldImagery, group = "Esri.WorldImagery") %>%
+        # addWMSTiles(
+        #   "http://ovc.catastro.meh.es/Cartografia/WMS/ServidorWMS.aspx",
+        #   layers = "catastro"
+        # ) %>%
+        # addWMSTiles(
+        #   "https://mapserver.eprinsa.es/cgi-bin/eiel",
+        #   layers = "EIEL"
+        # ) %>%
+        addLayersControl(
+          baseGroups = c("Esri.WorldImagery", "OSM","catastro", "EIEL"),
+          overlayGroups = c(
+            "parcelas_rusticas", "contrucciones_urbanas", "parcelas_urbanas", "limite_urbana","limite_rustica", "hidrografia","carreteras",
+            "vias_pecuarias", "ferrocarril",
+            "inmuebles_urbanos", "inmuebles_rusticos", "vias_publicas_urbanas", "vias_publicas_rusticas",
+            "bienes_revertibles", "patrimonio_suelo"),
+          options = layersControlOptions(collapsed = TRUE)
+        ) %>% 
+        addDrawToolbar(
+          targetGroup = "editing",
+          editOptions = editToolbarOptions(selectedPathOptions = selectedPathOptions()),
+          position="bottomleft") %>% 
+        addEasyButton(easyButton( position = "bottomleft",
+                                  icon="fa-backward", title="Refresh map", id = "refresh-map", 
+                                  onClick = JS("function(btn, map){Shiny.onInputChange('cancel_edit', Math.random());}")))
+    } else {
+      mapa<-leaflet() %>% 
+        addPolygons(data = parcelas_rusticas , color=getColorsMap(parcelas_rusticas$style), group = "parcelas_rusticas", fill=TRUE,
+                    popup = popupTable(parcelas_rusticas[,2:3]), layerId = parcelas_rusticas$parcela_id) %>%
+        addPolygons(
+          data = construcciones_urbanas , color=getColorsMap(construcciones_urbanas$style), group = "construcciones_urbanas", fill=TRUE,
+          popup = popupTable(construcciones_urbanas[,2:3] ), layerId = construcciones_urbanas$construccion_id )%>%
+        addPolygons(
+          data = parcelas_urbanas , color="gray", group = "parcelas_urbanas", fill=TRUE, fillColor = "gray",
+          popup = paste(
+            "via_id: ", parcelas_urbanas$parcela_id, "<br>",
+            "masa: ", parcelas_urbanas$DELEGACIO, "<br>",
+            "parcela: ", parcelas_urbanas$MUNICIPIO, "<br>"), layerId = parcelas_urbanas$parcela_id ) %>%
+        addPolygons(
+          data = limite_urbana , color=getColorsMap(limite_urbana$style), group = "limite_urbana", fill=FALSE, dashArray ="20,20",
+          layerId = limite_urbana$limite_id ) %>%
+        addPolygons(
+          data = limite_rustica , color=getColorsMap(limite_rustica$style), group = "limite_rustica", fill=FALSE, dashArray ="20,20",
+          layerId = limite_rustica$limite_id ) %>%
+        # addPolygons(
+        #   data = hidrografia , color="blue", group = "hidrografia",
+        #   popup = paste(
+        #     "via_id: ", hidrografia$cuerpo_id, "<br>",
+        #     "masa: ", hidrografia$id_red, "<br>",
+        #     "parcela: ", hidrografia$id_tramo, "<br>",
+        #     "<button onclick='Shiny.onInputChange(\"remove_feature\",  Math.random())' id='removeFeature' type='button' class='btn btn-default action-button'>Remove</button>",
+        #     "<button onclick='Shiny.onInputChange(\"update_feature\",  Math.random())' id='updateFeature' type='button' class='btn btn-default action-button'>Update</button>"
+        #   ), layerId = hidrografia$cuerpo_id ) %>%
+        # addPolygons(
+        #   data = carreteras , color="red", group = "carreteras",
+      #   popup = paste(
+      #     "via_id: ", carreteras$carretera_id, "<br>",
+      #     "masa: ", carreteras$id_vial, "<br>",
+      #     "parcela: ", carreteras$carretera_id, "<br>",
+      #     "<button onclick='Shiny.onInputChange(\"remove_feature\",  Math.random())' id='removeFeature' type='button' class='btn btn-default action-button'>Remove</button>",
+      #     "<button onclick='Shiny.onInputChange(\"update_feature\",  Math.random())' id='updateFeature' type='button' class='btn btn-default action-button'>Update</button>"
+      #   ), layerId = carreteras$carretera_id) %>%
+      addPolylines(
+        data = vias_pecuarias , color=getColorsMap(vias_pecuarias$style), group = "vias_pecuarias", fillColor = getColorsMap(vias_pecuarias$style),
+        popup = popupTable(vias_pecuarias[,2:3] ), layerId = vias_pecuarias$via_id ) %>%
+        
+        addPolygons(data = inmuebles_urbanos , color=getColorsMap(inmuebles_urbanos$style), group = "inmuebles_urbanos", fill=TRUE, fillColor = getColorsMap(inmuebles_urbanos$style), opacity = 0.4,
+                    popup = popupTable(inmuebles_urbanos[,2:3]),
+                    layerId = inmuebles_urbanos$inmueble_id) %>%
+        addPolygons(data = inmuebles_rusticos , color=getColorsMap(inmuebles_rusticos$style), group = "inmuebles_rusticos", fill=TRUE, opacity = 0.4,
+                    popup = popupTable(inmuebles_rusticos[,2:3]),
+                    layerId = inmuebles_rusticos$inmueble_id)  %>%
+        addPolygons(data = vias_publicas_urbanas , color=getColorsMap(vias_publicas_urbanas$style), group = "vias_publicas_urbanas",
+                    popup = popupTable(vias_publicas_urbanas[,2:3] ),
+                    layerId = vias_publicas_urbanas$via_id) %>%
+        addPolygons(data = vias_publicas_rusticas , color=getColorsMap(vias_publicas_rusticas$style), group = "vias_publicas_rusticas", fillColor = getFillColorsMap(vias_publicas_rusticas$style),
+                    popup = popupTable(vias_publicas_rusticas[,2:3] ), 
+                    layerId = vias_publicas_rusticas$via_id) %>%
+        addPolylines(data = bienes_revertibles , color=getColorsMap(bienes_revertibles$style), group = "bienes_revertibles", fillColor = getFillColorsMap(bienes_revertibles$style),
+                     popup = popupTable(bienes_revertibles[,1:3]), 
+                     layerId = bienes_revertibles$bien_id) %>%
+        addPolygons(data = patrimonio_suelo , color=getColorsMap(patrimonio_suelo$style), group = "patrimonio_suelo", fill = TRUE,
+                    popup = popupTable(patrimonio_suelo[,2:3] ), 
+                    layerId = patrimonio_suelo$patrimonio_id) %>%
+        addTiles( group = "OSM") %>%
+        addProviderTiles(providers$Esri.WorldImagery, group = "Esri.WorldImagery") %>%
+        # addWMSTiles(
+        #   "http://ovc.catastro.meh.es/Cartografia/WMS/ServidorWMS.aspx",
+        #   layers = "catastro"
+        # ) %>%
+        # addWMSTiles(
+        #   "https://mapserver.eprinsa.es/cgi-bin/eiel",
+        #   layers = "EIEL"
+        # ) %>%
+        addLayersControl(
+          baseGroups = c("Esri.WorldImagery", "OSM","catastro", "EIEL"),
+          overlayGroups = c(
+            "parcelas_rusticas", "contrucciones_urbanas", "parcelas_urbanas", "limite_urbana","limite_rustica", "hidrografia","carreteras",
+            "vias_pecuarias", "ferrocarril",
+            "inmuebles_urbanos", "inmuebles_rusticos", "vias_publicas_urbanas", "vias_publicas_rusticas",
+            "bienes_revertibles", "patrimonio_suelo"),
+          options = layersControlOptions(collapsed = TRUE)
+        ) 
+    }
       
     
     if(!is.null(reactiveData$mapLocation)){
@@ -248,12 +332,13 @@ server <- function(input, output, session) {
   
   newFeature <- reactiveValues()
   observeEvent(input$mapa_draw_new_feature,{
-
+    req(length(parseQueryString(session$clientData$url_search)) != 0)
+    req(parseQueryString(session$clientData$url_search)[["id"]]== "3758")
     updatedLayer <- input$editingLayer
     
-    if(editedFeature$updatedLayer == "inmuebles_rusticos" | editedFeature$updatedLayer == "vias_publicas_rusticas" |
-       editedFeature$updatedLayer == "inmuebles_urbanos" | editedFeature$updatedLayer == "vias_publicas_urbanas" |
-       editedFeature$updatedLayer == "bienes_revertibles" | editedFeature$updatedLayer == "patrimonio_suelo"){
+    if(editedFeature$updatedLayer == "inmuebles_rusticos_qgis" | editedFeature$updatedLayer == "vias_publicas_rusticas_qgis" |
+       editedFeature$updatedLayer == "inmuebles_urbanos_qgis" | editedFeature$updatedLayer == "vias_publicas_urbanas_qgis" |
+       editedFeature$updatedLayer == "bienes_revertibles_qgis" | editedFeature$updatedLayer == "patrimonio_suelo_qgis"){
       geometryInDatabase <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = paste0("SELECT * FROM ", updatedLayer," LIMIT 1")) %>%
         st_transform(4326) %>% st_geometry_type(by_geometry = FALSE)
       
@@ -305,7 +390,7 @@ server <- function(input, output, session) {
                       column(12,h4("Actualiza los datos"))),
                     fluidRow(class="panel-inputs-newFeature",
                              fluidRow(
-                               lapply(1:(ncol(dataExample)-1), function(i) {
+                               lapply(1:(ncol(dataExample)-4), function(i) {
                                  print(class(dataExample[[i]]))
                                  print(dataExample[[i]])
                                  if(class(dataExample[[i]]) == "character"){
@@ -314,7 +399,7 @@ server <- function(input, output, session) {
                                    numericInput(paste0("id_", colnames(dataExample)[i]), label = colnames(dataExample)[i], value = ifelse(is.na(dataExample[[i]]), 0,dataExample[[i]] ))
                                  } else if(class(dataExample[[i]]) == "Date"){
                                    dateInput(paste0("id_", colnames(dataExample)[i]), label = colnames(dataExample)[i], value = ifelse(is.na(dataExample[[i]]), as.character(Sys.Date()),dataExample[[i]] ))
-                                 }
+                                 } 
                                  
                                })
                                
@@ -338,6 +423,8 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$addNewFeature,{
+    req(length(parseQueryString(session$clientData$url_search)) != 0)
+    req(parseQueryString(session$clientData$url_search)[["id"]]== "3758")
     formDataList <- lapply(2:ncol(newFeature$attributes), function(i) input[[paste0('id_', colnames(newFeature$attributes)[i])]])
     
     formDataVector <- c()
@@ -354,14 +441,13 @@ server <- function(input, output, session) {
     getLastID <- dbGetQuery(conn, paste0("SELECT * FROM ",input$editingLayer, " ORDER BY ", colnames(newFeature$attributes)[1]," DESC LIMIT 1"))
     newId <- getLastID[,1] + 1
     
-    dataUpdated <- c(newId,formDataVector )
+    dataUpdated <- c(newId,formDataVector, c(as.numeric(parseQueryString(session$clientData$url_search)[["id"]]), as.character(Sys.time()),getLastID[,"style"]  ) )
     geoemtryPolygon <- st_as_text(newFeature$poligono$geometry)
     
     dbGetQuery(conn, paste0("INSERT INTO ", input$editingLayer, " VALUES ('",paste(dataUpdated , collapse = "', '"), "')"))
     
     dbGetQuery(conn, paste0("UPDATE ", input$editingLayer," SET geom = ST_GeomFromText('", geoemtryPolygon,"', 4326) WHERE ",colnames(newFeature$attributes)[1]," = ",newId,";"))
     
-    dbGetQuery(conn, paste0("UPDATE ", updatedLayer," SET modificado_por = ",session$clientData$url_search,", fecha_modifica = ",Sys.time()," WHERE ",columnUpdated ," = ",editedFeature,";"))
     
     newData <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = paste0("SELECT * FROM ", input$editingLayer)) %>%
       st_transform(4326)
@@ -375,15 +461,17 @@ server <- function(input, output, session) {
   
   
   observeEvent(input$remove_feature,{
+    req(length(parseQueryString(session$clientData$url_search)) != 0)
+    req(parseQueryString(session$clientData$url_search)[["id"]]== "3758")
     req(editedFeature$featureId)
     
     removedFeature <- editedFeature$featureId
     updatedLayer <- editedFeature$updatedLayer
     columnUpdated <- dbGetQuery(conn, paste0("SELECT * FROM ",updatedLayer," LIMIT 1")) %>% select(1L) %>% names(.)
     
-    if(updatedLayer == "inmuebles_rusticos" | updatedLayer == "vias_publicas_rusticas" |
-       updatedLayer == "inmuebles_urbanos" | updatedLayer == "vias_publicas_urbanas" |
-       updatedLayer == "bienes_revertibles" | updatedLayer == "patrimonio_suelo"){
+    if(updatedLayer == "inmuebles_rusticos_qgis" | updatedLayer == "vias_publicas_rusticas_qgis" |
+       updatedLayer == "inmuebles_urbanos_qgis" | updatedLayer == "vias_publicas_urbanas_qgis" |
+       updatedLayer == "bienes_revertibles_qgis" | updatedLayer == "patrimonio_suelo_qgis"){
       
       dbGetQuery(conn, paste0("DELETE FROM ",updatedLayer," WHERE ",columnUpdated," = ", removedFeature))
       
@@ -391,8 +479,8 @@ server <- function(input, output, session) {
       newData <- st_read(dsn = conn, geometry_column = "geom", EWKB = TRUE, query = paste0("SELECT * FROM ", updatedLayer)) %>%
         st_transform(4326)
       
-      map_proxy%>%clearGroup(updatedLayer)%>%
-        addPolygons(data = newData , color=getColorsMap(newData$style), group = updatedLayer, fill=TRUE,
+      map_proxy%>%clearGroup(gsub("_qgis","",updatedLayer))%>%
+        addPolygons(data = newData , color=getColorsMap(newData$style), group = gsub("_qgis","",updatedLayer), fill=TRUE,
                     popup = popupTable(newData[,2:3] %>% st_drop_geometry() %>% mutate(edit = rep(
                       "<div> 
                                                                             <button onclick='Shiny.onInputChange(\"remove_feature\",  Math.random())' id='removeFeature' type='button' class='btn btn-default action-button'>Remove</button>
@@ -401,6 +489,7 @@ server <- function(input, output, session) {
                     ))
                     ), 
                     layerId = newData[[columnUpdated]]) 
+      
     } else {
       showNotification(h4("No puedes editar este layer"), action = NULL, duration = 5, 
                        id = "noEdit", "error")
@@ -416,7 +505,7 @@ server <- function(input, output, session) {
     
     updatedLayer <- input$mapa_shape_click[["group"]]
     req(updatedLayer != "editing")
-    editedFeature$updatedLayer<- updatedLayer
+    editedFeature$updatedLayer<- paste0(updatedLayer,"_qgis")
     
     print(editedFeature$featureId)
     print(editedFeature$updatedLayer)
@@ -486,16 +575,18 @@ server <- function(input, output, session) {
   
   
   observeEvent(input$update_feature,{
+    req(length(parseQueryString(session$clientData$url_search)) != 0)
+    req(parseQueryString(session$clientData$url_search)[["id"]]== "3758")
     
     editedFeature <- input$mapa_shape_click[["id"]]
-    updatedLayer <- input$mapa_shape_click[["group"]]
+    updatedLayer <- paste0(input$mapa_shape_click[["group"]],"_qgis")
     columnUpdated <- dbGetQuery(conn, paste0("SELECT * FROM ",updatedLayer," LIMIT 1")) %>% select(1L) %>% names(.)
     
-    if(updatedLayer == "inmuebles_rusticos" | updatedLayer == "vias_publicas_rusticas" |
-       updatedLayer == "inmuebles_urbanos" | updatedLayer == "vias_publicas_urbanas" |
-       updatedLayer == "bienes_revertibles" | updatedLayer == "patrimonio_suelo"){
+    if(updatedLayer == "inmuebles_rusticos_qgis" | updatedLayer == "vias_publicas_rusticas_qgis" |
+       updatedLayer == "inmuebles_urbanos_qgis" | updatedLayer == "vias_publicas_urbanas_qgis" |
+       updatedLayer == "bienes_revertibles_qgis" | updatedLayer == "patrimonio_suelo_qgis"){
       
-      ## Enable edit button
+      ## Enable edit button and remove draw panel
       runjs('
           function myFunction() {
             var drawEditor = document.getElementsByClassName("leaflet-draw-toolbar")[0];
@@ -541,6 +632,8 @@ server <- function(input, output, session) {
   })
   
   observeEvent(input$mapa_draw_edited_features,{
+    req(length(parseQueryString(session$clientData$url_search)) != 0)
+    req(parseQueryString(session$clientData$url_search)[["id"]]== "3758")
     req(input$mapa_draw_edited_features)
     
     editedFeature <- input$mapa_shape_click[["id"]]
@@ -568,8 +661,9 @@ server <- function(input, output, session) {
     
     dbGetQuery(conn, paste0("UPDATE ", updatedLayer," SET geom = ST_GeomFromText('", geoemtryPolygon,"', 4326) WHERE ",columnUpdated ," = ",editedFeature,";"))
     
-    dbGetQuery(conn, paste0("UPDATE ", updatedLayer," SET modificado_por = ",session$clientData$url_search,", fecha_modifica = ",Sys.time()," WHERE ",columnUpdated ," = ",editedFeature,";"))
-
+    dbGetQuery(conn, paste0("UPDATE ", updatedLayer," SET modificado_por = ",parseQueryString(session$clientData$url_search)[["id"]],", fecha_modifica = ",paste0("'",as.character(Sys.time()),"'")," WHERE ",columnUpdated ," = ",editedFeature,";"))
+    
+    
     #Remoe cancel edit button
     runjs('
           function removeCancelElem() {
@@ -602,6 +696,7 @@ server <- function(input, output, session) {
   observe({
     query <- parseQueryString(session$clientData$url_search)
     print(query)
+    
   })
   
   # observe({
